@@ -13,30 +13,28 @@
  */
 package io.openmessaging.benchmark.driver.redis;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
+import io.lettuce.core.Consumer;
+import io.lettuce.core.StreamMessage;
+import io.lettuce.core.XReadArgs;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.sync.RedisCommands;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
-import java.util.Collections;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.StreamEntryID;
-import redis.clients.jedis.params.XReadGroupParams;
-import redis.clients.jedis.resps.StreamEntry;
 
 public class RedisBenchmarkConsumer implements BenchmarkConsumer {
-    private final JedisPool pool;
+    private final GenericObjectPool<StatefulRedisConnection<String, byte[]>> pool;
     private final String topic;
     private final String subscriptionName;
     private final String consumerId;
-    private final ExecutorService executor;
+    private static final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
     private final Future<?> consumerTask;
     private volatile boolean closing = false;
 
@@ -44,35 +42,29 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
             final String consumerId,
             final String topic,
             final String subscriptionName,
-            final JedisPool pool,
+            final GenericObjectPool<StatefulRedisConnection<String, byte[]>> pool,
             ConsumerCallback consumerCallback) {
         this.pool = pool;
         this.topic = topic;
         this.subscriptionName = subscriptionName;
         this.consumerId = consumerId;
-        this.executor = Executors.newSingleThreadExecutor();
-        Jedis jedis = this.pool.getResource();
-
         this.consumerTask =
-                this.executor.submit(
+                executor.submit(
                         () -> {
-                            while (!closing) {
-                                try {
-                                    Map<String, StreamEntryID> streamQuery =
-                                            Collections.singletonMap(this.topic, StreamEntryID.UNRECEIVED_ENTRY);
-                                    List<Map.Entry<String, List<StreamEntry>>> range =
-                                            jedis.xreadGroup(
-                                                    this.subscriptionName,
-                                                    this.consumerId,
-                                                    XReadGroupParams.xReadGroupParams().block(0),
-                                                    streamQuery);
+                            while (!this.closing) {
+                                try (StatefulRedisConnection<String, byte[]> conn = this.pool.borrowObject()) {
+                                    RedisCommands<String, byte[]> commands = conn.sync();
+
+                                    List<StreamMessage<String, byte[]>> range = commands.xreadgroup(
+                                            Consumer.from(this.subscriptionName
+                                                    , this.consumerId)
+                                            , XReadArgs.StreamOffset.lastConsumed(this.topic));
+
                                     if (range != null) {
-                                        for (Map.Entry<String, List<StreamEntry>> streamEntries : range) {
-                                            for (StreamEntry entry : streamEntries.getValue()) {
-                                                long timestamp = entry.getID().getTime();
-                                                byte[] payload = entry.getFields().get("payload").getBytes(UTF_8);
-                                                consumerCallback.messageReceived(payload, timestamp);
-                                            }
+                                        for (StreamMessage<String, byte[]> streamEntry : range) {
+                                            long timestamp = Long.parseLong(streamEntry.getId().split("-")[0]);
+                                            byte[] payload = streamEntry.getBody().get("payload");
+                                            consumerCallback.messageReceived(payload, timestamp);
                                         }
                                     }
 

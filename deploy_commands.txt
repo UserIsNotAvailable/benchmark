@@ -1,0 +1,43 @@
+sudo yum install -y java-17-amazon-corretto-headless
+
+# sudo wget https://repos.fedorapeople.org/repos/dchen/apache-maven/epel-apache-maven.repo -O /etc/yum.repos.d/epel-apache-maven.repo
+# sudo sed -i s/\$releasever/6/g /etc/yum.repos.d/epel-apache-maven.repo
+# sudo yum install -y apache-maven
+
+sudo wget https://archive.apache.org/dist/maven/maven-3/3.8.6/binaries/apache-maven-3.8.6-bin.tar.gz -P /tmp
+sudo tar xvf /tmp/apache-maven-3.8.6-bin.tar.gz -C /opt
+sudo ln -s /opt/apache-maven-3.8.6 /opt/maven
+sudo dd of=/etc/profile.d/maven.sh << EOF
+export M2_HOME=/opt/maven
+export MAVEN_HOME=/opt/maven
+export PATH=\${M2_HOME}/bin:\${PATH}
+EOF
+sudo chmod +x /etc/profile.d/maven.sh
+source /etc/profile.d/maven.sh
+
+sudo yum install -y git
+
+git clone https://github.com/UserIsNotAvailable/benchmark.git
+mvn clean install -DskipTests -Djacoco.skip -Dcheckstyle.skip -Dspotless.check.skip
+
+sudo yum install -y docker
+sudo service docker start
+sudo usermod -a -G docker ${USER}
+
+docker stop redis
+docker remove redis
+docker volume prune -f
+docker run -d --name redis -v ./logs:/var/log/redis/ -v ./redis.conf:/etc/redis/redis.conf -p 6379:6379 redis:latest redis-server /etc/redis/redis.conf
+
+
+docker run  --name redis -v ./redis.conf:/usr/local/etc/redis/redis.conf -v ./logs:/var/log/redis/ -p 6379:6379 redis:latest
+
+
+sudo bin/benchmark-worker --port 8080 --stats-port 8081
+
+
+
+bin/benchmark --drivers driver-redis/redis.yaml --workers http://54.150.226.52:8080,http://54.150.226.52:8080 workloads/1-topic-16-partitions-1kb.yaml
+
+--drivers driver-redis/redis.yaml workloads/1-topic-16-partitions-1kb.yaml
+
