@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.io.BaseEncoding;
+import io.lettuce.core.RedisBusyException;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.StaticCredentialsProvider;
@@ -87,6 +88,8 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
                     XReadArgs.StreamOffset.latest(topic),
                     subscriptionName,
                     XGroupCreateArgs.Builder.mkstream());
+        } catch (RedisBusyException e) {
+            // Ignore exist group
         } catch (Exception e) {
             log.info("Failed to create consumer instance.", e);
         }
