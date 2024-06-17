@@ -20,3 +20,5 @@ redisPort: 6379
 redisHost: 127.0.0.1
 jedisPoolMaxTotal: 16
 jedisPoolMaxIdle: 16
+jedisPoolMaxTotal: 100000
+jedisPoolMaxIdle: 100000
