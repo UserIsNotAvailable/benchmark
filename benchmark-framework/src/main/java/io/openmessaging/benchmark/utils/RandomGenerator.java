@@ -15,6 +15,7 @@ package io.openmessaging.benchmark.utils;
 
 import com.google.common.io.BaseEncoding;
 import java.util.Random;
+import java.util.UUID;
 
 public class RandomGenerator {
 
@@ -24,5 +25,9 @@ public class RandomGenerator {
         byte[] buffer = new byte[5];
         random.nextBytes(buffer);
         return BaseEncoding.base64Url().omitPadding().encode(buffer);
+    }
+
+    public static String getUuid() {
+        return UUID.randomUUID().toString();
     }
 }

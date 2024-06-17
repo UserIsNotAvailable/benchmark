@@ -26,6 +26,8 @@ import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.support.ConnectionPoolSupport;
+import io.lettuce.core.XReadArgs;
+import io.lettuce.core.XGroupCreateArgs;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
@@ -82,9 +84,9 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
         try (StatefulRedisConnection<String, byte[]> conn = this.lettucePool.borrowObject()) {
             RedisCommands<String, byte[]> commands = conn.sync();
             commands.xgroupCreate(
-                    io.lettuce.core.XReadArgs.StreamOffset.latest(topic),
+                    XReadArgs.StreamOffset.latest(topic),
                     subscriptionName,
-                    io.lettuce.core.XGroupCreateArgs.Builder.mkstream());
+                    XGroupCreateArgs.Builder.mkstream());
         } catch (Exception e) {
             log.info("Failed to create consumer instance.", e);
         }
