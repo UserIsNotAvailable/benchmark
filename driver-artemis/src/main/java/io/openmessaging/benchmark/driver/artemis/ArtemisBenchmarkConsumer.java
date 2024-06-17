@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.artemis;
 
-
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import org.apache.activemq.artemis.api.core.ActiveMQException;

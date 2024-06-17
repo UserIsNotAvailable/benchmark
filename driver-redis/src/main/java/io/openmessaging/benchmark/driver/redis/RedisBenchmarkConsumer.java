@@ -20,21 +20,19 @@ import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
-import org.apache.commons.pool2.impl.GenericObjectPool;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RedisBenchmarkConsumer implements BenchmarkConsumer {
     private final GenericObjectPool<StatefulRedisConnection<String, byte[]>> pool;
     private final String topic;
     private final String subscriptionName;
     private final String consumerId;
-    private static final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
     private final Future<?> consumerTask;
     private volatile boolean closing = false;
 
@@ -55,10 +53,10 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
                                 try (StatefulRedisConnection<String, byte[]> conn = this.pool.borrowObject()) {
                                     RedisCommands<String, byte[]> commands = conn.sync();
 
-                                    List<StreamMessage<String, byte[]>> range = commands.xreadgroup(
-                                            Consumer.from(this.subscriptionName
-                                                    , this.consumerId)
-                                            , XReadArgs.StreamOffset.lastConsumed(this.topic));
+                                    List<StreamMessage<String, byte[]>> range =
+                                            commands.xreadgroup(
+                                                    Consumer.from(this.subscriptionName, this.consumerId),
+                                                    XReadArgs.StreamOffset.lastConsumed(this.topic));
 
                                     if (range != null) {
                                         for (StreamMessage<String, byte[]> streamEntry : range) {
@@ -84,4 +82,5 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
     }
 
     private static final Logger log = LoggerFactory.getLogger(RedisBenchmarkDriver.class);
+    private static final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 }

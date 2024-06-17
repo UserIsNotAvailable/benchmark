@@ -13,28 +13,26 @@
  */
 package io.openmessaging.benchmark.driver.redis;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
-import org.apache.commons.pool2.impl.GenericObjectPool;
-import redis.clients.jedis.params.XAddParams;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
+import org.apache.commons.pool2.impl.GenericObjectPool;
 
 public class RedisBenchmarkProducer implements BenchmarkProducer {
     private final GenericObjectPool<StatefulRedisConnection<String, byte[]>> pool;
     private final String rmqTopic;
-    private final XAddParams xaddParams;
 
-    public RedisBenchmarkProducer(final GenericObjectPool<StatefulRedisConnection<String, byte[]>> pool, final String rmqTopic) {
+    public RedisBenchmarkProducer(
+            final GenericObjectPool<StatefulRedisConnection<String, byte[]>> pool,
+            final String rmqTopic) {
         this.pool = pool;
         this.rmqTopic = rmqTopic;
-        this.xaddParams = redis.clients.jedis.params.XAddParams.xAddParams();
     }
 
     @Override

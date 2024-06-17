@@ -13,12 +13,13 @@
  */
 package io.openmessaging.benchmark.driver.redis;
 
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.io.BaseEncoding;
-import io.lettuce.core.*;
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisURI;
+import io.lettuce.core.StaticCredentialsProvider;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import io.lettuce.core.codec.ByteArrayCodec;
@@ -30,12 +31,6 @@ import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import io.openmessaging.benchmark.driver.redis.client.RedisClientConfig;
-import org.apache.bookkeeper.stats.StatsLogger;
-import org.apache.commons.pool2.impl.GenericObjectPool;
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -43,6 +38,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
+import org.apache.bookkeeper.stats.StatsLogger;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RedisBenchmarkDriver implements BenchmarkDriver {
     private GenericObjectPool<StatefulRedisConnection<String, byte[]>> lettucePool;
@@ -61,8 +61,7 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<Void> createTopic(final String topic, final int partitions) {
-        return CompletableFuture.runAsync(() -> {
-        });
+        return CompletableFuture.runAsync(() -> {});
     }
 
     @Override
@@ -82,7 +81,10 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
         }
         try (StatefulRedisConnection<String, byte[]> conn = this.lettucePool.borrowObject()) {
             RedisCommands<String, byte[]> commands = conn.sync();
-            commands.xgroupCreate(XReadArgs.StreamOffset.latest(topic), subscriptionName, XGroupCreateArgs.Builder.mkstream());
+            commands.xgroupCreate(
+                    io.lettuce.core.XReadArgs.StreamOffset.latest(topic),
+                    subscriptionName,
+                    io.lettuce.core.XGroupCreateArgs.Builder.mkstream());
         } catch (Exception e) {
             log.info("Failed to create consumer instance.", e);
         }
@@ -91,63 +93,83 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
                         consumerId, topic, subscriptionName, this.lettucePool, consumerCallback));
     }
 
-
     private void setupLettuceConn() {
-        GenericObjectPoolConfig<StatefulRedisConnection<String, byte[]>> poolConfig = new GenericObjectPoolConfig<>();
+        GenericObjectPoolConfig<StatefulRedisConnection<String, byte[]>> poolConfig =
+                new GenericObjectPoolConfig<>();
         poolConfig.setMaxTotal(this.clientConfig.jedisPoolMaxTotal);
         poolConfig.setMaxIdle(this.clientConfig.jedisPoolMaxIdle);
 
-        RedisURI redisUri = RedisURI.builder()
-                .withHost(this.clientConfig.redisHost)
-                .withPort(this.clientConfig.redisPort)
-                .withTimeout(Duration.ofMillis(2000)).build();
+        RedisURI redisUri =
+                RedisURI.builder()
+                        .withHost(this.clientConfig.redisHost)
+                        .withPort(this.clientConfig.redisPort)
+                        .withTimeout(Duration.ofMillis(2000))
+                        .build();
 
         if (this.clientConfig.redisPass != null) {
             if (this.clientConfig.redisUser != null) {
                 redisUri.setCredentialsProvider(
-                        new StaticCredentialsProvider(this.clientConfig.redisUser,
-                                this.clientConfig.redisPass.toCharArray()));
+                        new StaticCredentialsProvider(
+                                this.clientConfig.redisUser, this.clientConfig.redisPass.toCharArray()));
             } else {
                 redisUri.setCredentialsProvider(
-                        new StaticCredentialsProvider(null,
-                                this.clientConfig.redisPass.toCharArray()));
+                        new StaticCredentialsProvider(null, this.clientConfig.redisPass.toCharArray()));
             }
         }
 
-        this.lettucePool = ConnectionPoolSupport.createGenericObjectPool(
-                () -> RedisClient.create(redisUri).connect(
-                        new RedisCodec<String, byte[]>() {
-                            private final StringCodec keyCodec = new StringCodec(StandardCharsets.UTF_8);
-                            private final ByteArrayCodec valueCodec = new ByteArrayCodec();
+        this.lettucePool =
+                ConnectionPoolSupport.createGenericObjectPool(
+                        () ->
+                                RedisClient.create(redisUri)
+                                        .connect(
+                                                new RedisCodec<String, byte[]>() {
+                                                    private final StringCodec keyCodec =
+                                                            new StringCodec(StandardCharsets.UTF_8);
+                                                    private final ByteArrayCodec valueCodec = new ByteArrayCodec();
 
-                            @Override public String decodeKey(ByteBuffer bytes) { return keyCodec.decodeKey(bytes); }
-                            @Override public byte[] decodeValue(ByteBuffer bytes) { return valueCodec.decodeValue(bytes); }
-                            @Override public ByteBuffer encodeKey(String key) { return keyCodec.encodeKey(key); }
-                            @Override public ByteBuffer encodeValue(byte[] value) { return valueCodec.encodeValue(value); }
-                        }
-                        , redisUri)
-                , poolConfig);
+                                                    @Override
+                                                    public String decodeKey(ByteBuffer bytes) {
+                                                        return keyCodec.decodeKey(bytes);
+                                                    }
 
+                                                    @Override
+                                                    public byte[] decodeValue(ByteBuffer bytes) {
+                                                        return valueCodec.decodeValue(bytes);
+                                                    }
 
-//        try (StatefulRedisConnection<String, byte[]> connection = lettucePool.borrowObject()) {
-//            RedisCommands<String, String> command = connection.sync();
-//            SetArgs setArgs = SetArgs.Builder.nx().ex(5);
-//            command.set("name", "throwable", setArgs);
-//            String n = command.get("name");
-//            log.info("Get value:{}", n);
-//        }catch (Exception e){
-//
-//        }
-//        lettucePool.close();
-//
-//
-//        StatefulRedisConnection<String, byte[]> connection = redisClient.connect();
-//
-//        RedisAsyncCommands<String, String> async = connection.async();
-//        RedisFuture<String> stringRedisFuture = async.xgroupCreate();
-//
-//        connection.close();
-//        redisClient.shutdown();
+                                                    @Override
+                                                    public ByteBuffer encodeKey(String key) {
+                                                        return keyCodec.encodeKey(key);
+                                                    }
+
+                                                    @Override
+                                                    public ByteBuffer encodeValue(byte[] value) {
+                                                        return valueCodec.encodeValue(value);
+                                                    }
+                                                },
+                                                redisUri),
+                        poolConfig);
+
+        //        try (StatefulRedisConnection<String, byte[]> connection = lettucePool.borrowObject())
+        // {
+        //            RedisCommands<String, String> command = connection.sync();
+        //            SetArgs setArgs = SetArgs.Builder.nx().ex(5);
+        //            command.set("name", "throwable", setArgs);
+        //            String n = command.get("name");
+        //            log.info("Get value:{}", n);
+        //        }catch (Exception e){
+        //
+        //        }
+        //        lettucePool.close();
+        //
+        //
+        //        StatefulRedisConnection<String, byte[]> connection = redisClient.connect();
+        //
+        //        RedisAsyncCommands<String, String> async = connection.async();
+        //        RedisFuture<String> stringRedisFuture = async.xgroupCreate();
+        //
+        //        connection.close();
+        //        redisClient.shutdown();
     }
 
     @Override

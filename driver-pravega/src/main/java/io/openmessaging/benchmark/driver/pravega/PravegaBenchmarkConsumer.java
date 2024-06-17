@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.pravega;
 
-
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import io.pravega.client.EventStreamClientFactory;

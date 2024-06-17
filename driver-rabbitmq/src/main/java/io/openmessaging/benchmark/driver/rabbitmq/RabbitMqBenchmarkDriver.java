@@ -53,6 +53,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
 
     private RabbitMqConfig config;
     private final AtomicInteger uriIndex = new AtomicInteger();
+
     /**
      * Map of client's primary broker to the connection -- the connection may still be able to fall
      * back to secondary brokers.

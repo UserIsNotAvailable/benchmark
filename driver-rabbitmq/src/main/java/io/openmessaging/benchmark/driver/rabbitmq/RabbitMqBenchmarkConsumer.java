@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
-
 import com.rabbitmq.client.AMQP.BasicProperties;
 import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.Channel;

@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.worker;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
