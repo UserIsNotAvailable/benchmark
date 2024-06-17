@@ -78,7 +78,7 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
         closing = true;
         executor.shutdown();
         consumerTask.get();
-        pool.close();
+//        pool.close();
     }
 
     private static final Logger log = LoggerFactory.getLogger(RedisBenchmarkDriver.class);
