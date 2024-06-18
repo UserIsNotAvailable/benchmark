@@ -83,7 +83,7 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
     @Override
     public void close() throws Exception {
         closing = true;
-        executor.shutdownNow();
+        executor.shutdown();
         consumerTask.get();
 //        pool.close();
     }
