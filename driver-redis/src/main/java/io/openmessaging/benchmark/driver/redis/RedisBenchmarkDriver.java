@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -73,6 +74,34 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
             setupLettuceConn();
         }
         return CompletableFuture.completedFuture(new RedisBenchmarkProducer(lettucePool, topic));
+    }
+
+    @Override
+    public CompletableFuture<List<BenchmarkConsumer>> createConsumers(List<ConsumerInfo> consumers) {
+        List<CompletableFuture<BenchmarkConsumer>> futures =
+                consumers.stream()
+                        .map(
+                                ci ->
+                                        createConsumer(
+                                                ci.getTopic(), ci.getSubscriptionName(), ci.getConsumerCallback()))
+                        .toList()
+                        .stream()
+                        .map(
+                                future ->
+                                        CompletableFuture.supplyAsync(
+                                                () -> {
+                                                    try {
+                                                        RedisBenchmarkConsumer consumer = ((RedisBenchmarkConsumer) future.get());
+                                                        consumer.start();
+                                                        return (BenchmarkConsumer) consumer;
+                                                    } catch (Exception e) {
+                                                        log.info("Failed to create consumer instance.", e);
+                                                    }
+                                                    return null;
+                                                }))
+                        .toList();
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> futures.stream().map(CompletableFuture::join).toList());
     }
 
     @Override

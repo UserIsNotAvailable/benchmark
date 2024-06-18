@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +35,9 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
     private final String topic;
     private final String subscriptionName;
     private final String consumerId;
-    private final Future<?> consumerTask;
+    private final ConsumerCallback consumerCallback;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private Future<?> consumerTask;
     private volatile boolean closing = false;
 
     public RedisBenchmarkConsumer(
@@ -46,8 +50,12 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
         this.topic = topic;
         this.subscriptionName = subscriptionName;
         this.consumerId = consumerId;
+        this.consumerCallback = consumerCallback;
+    }
+
+    public void start() throws RejectedExecutionException {
         this.consumerTask =
-                executor.submit(
+                this.executor.submit(
                         () -> {
                             while (!this.closing) {
                                 try (StatefulRedisConnection<String, byte[]> conn = this.pool.borrowObject()) {
@@ -57,15 +65,11 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
                                             commands.xreadgroup(
                                                     Consumer.from(this.subscriptionName, this.consumerId),
                                                     XReadArgs.StreamOffset.lastConsumed(this.topic));
-
-                                    if (range != null) {
-                                        for (StreamMessage<String, byte[]> streamEntry : range) {
-                                            long timestamp = Long.parseLong(streamEntry.getId().split("-")[0]);
-                                            byte[] payload = streamEntry.getBody().get("payload");
-                                            consumerCallback.messageReceived(payload, timestamp);
-                                        }
+                                    for (StreamMessage<String, byte[]> streamEntry : range) {
+                                        long timestamp = Long.parseLong(streamEntry.getId().split("-")[0]);
+                                        byte[] payload = streamEntry.getBody().get("payload");
+                                        consumerCallback.messageReceived(payload, timestamp);
                                     }
-
                                 } catch (Exception e) {
                                     log.error("Failed to read from consumer instance.", e);
                                 }
@@ -82,5 +86,4 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
     }
 
     private static final Logger log = LoggerFactory.getLogger(RedisBenchmarkDriver.class);
-    private static final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 }

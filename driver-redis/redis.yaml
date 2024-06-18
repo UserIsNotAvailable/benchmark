@@ -22,3 +22,5 @@ jedisPoolMaxTotal: 16
 jedisPoolMaxIdle: 16
 jedisPoolMaxTotal: 100000
 jedisPoolMaxIdle: 100000
+jedisPoolMaxTotal: 64
+jedisPoolMaxIdle: 64
