@@ -1,0 +1,17 @@
+name: "31k-topics-1-partitions-256b-1p-1c-310k"
+topics: 31000
+partitionsPerTopic: 1
+keyDistributor: "NO_KEY"
+messageSize: 256
+useRandomizedPayloads: true
+randomBytesRatio: 0.5
+randomizedPayloadPoolSize: 1000
+payloadFile: null
+subscriptionsPerTopic: 1
+producersPerTopic: 1
+consumerPerSubscription: 1
+producerRate: 310000
+consumerBacklogSizeGB: 0
+backlogDrainRatio: 1.0
+testDurationMinutes: 1
+warmupDurationMinutes: 0

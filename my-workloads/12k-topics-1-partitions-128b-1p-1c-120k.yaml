@@ -1,0 +1,17 @@
+name: "12k-topics-1-partitions-128b-1p-1c-120k"
+topics: 12000
+partitionsPerTopic: 1
+keyDistributor: "NO_KEY"
+messageSize: 128
+useRandomizedPayloads: true
+randomBytesRatio: 0.5
+randomizedPayloadPoolSize: 1000
+payloadFile: null
+subscriptionsPerTopic: 1
+producersPerTopic: 1
+consumerPerSubscription: 1
+producerRate: 120000
+consumerBacklogSizeGB: 0
+backlogDrainRatio: 1.0
+testDurationMinutes: 1
+warmupDurationMinutes: 0
