@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
@@ -67,8 +68,8 @@ public class LocalWorker implements Worker, ConsumerCallback {
     private final ExecutorService executor =
             Executors.newCachedThreadPool(new DefaultThreadFactory("local-worker"));
     private final WorkerStats stats;
-    private boolean testCompleted = false;
-    private boolean consumersArePaused = false;
+    private volatile boolean testCompleted = false;
+    private volatile boolean consumersArePaused = false;
 
     public LocalWorker() {
         this(NullStatsLogger.INSTANCE);
@@ -292,14 +293,42 @@ public class LocalWorker implements Worker, ConsumerCallback {
         try {
             Thread.sleep(100);
 
-            for (BenchmarkProducer producer : producers) {
-                producer.close();
-            }
+            CompletableFuture
+                    .allOf(
+                            producers
+                                    .stream()
+                                    .map(
+                                            pi ->
+                                                    CompletableFuture
+                                                            .runAsync(
+                                                                    () -> {
+                                                                        try {
+                                                                            pi.close();
+                                                                        } catch (Exception e) {
+                                                                            log.error("Producer shutdown error.", e);
+                                                                        }
+                                                                    }))
+                                    .toArray(CompletableFuture[]::new))
+                    .join();
             producers.clear();
 
-            for (BenchmarkConsumer consumer : consumers) {
-                consumer.close();
-            }
+            CompletableFuture
+                    .allOf(
+                            consumers
+                                    .stream()
+                                    .map(
+                                            ci ->
+                                                    CompletableFuture
+                                                            .runAsync(
+                                                                    () -> {
+                                                                        try {
+                                                                            ci.close();
+                                                                        } catch (Exception e) {
+                                                                            log.error("Consumer shutdown error.", e);
+                                                                        }
+                                                                    }))
+                                    .toArray(CompletableFuture[]::new))
+                    .join();
             consumers.clear();
 
             if (benchmarkDriver != null) {

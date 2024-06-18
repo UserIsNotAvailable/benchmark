@@ -159,7 +159,7 @@ public class WorkloadGenerator implements AutoCloseable {
         worker.probeProducers();
 
         long start = System.currentTimeMillis();
-        long end = start + 60 * 1000;
+        long end = start + 300 * 1000;
         while (System.currentTimeMillis() < end) {
             CountersStats stats = worker.getCountersStats();
 
