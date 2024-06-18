@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
@@ -51,6 +52,7 @@ import org.slf4j.LoggerFactory;
 public class RedisBenchmarkDriver implements BenchmarkDriver {
     private GenericObjectPool<StatefulRedisConnection<String, byte[]>> lettucePool;
     private RedisClientConfig clientConfig;
+    private final List<String> topics = new ArrayList<>();
 
     @Override
     public void initialize(final File configurationFile, final StatsLogger statsLogger)
@@ -80,6 +82,7 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
     public CompletableFuture<List<BenchmarkConsumer>> createConsumers(List<ConsumerInfo> consumers) {
         List<CompletableFuture<BenchmarkConsumer>> futures =
                 consumers.stream()
+                        .peek(ci -> this.topics.add(ci.getTopic()))
                         .map(
                                 ci ->
                                         createConsumer(
@@ -183,32 +186,22 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
                                                 },
                                                 redisUri),
                         poolConfig);
-
-        //        try (StatefulRedisConnection<String, byte[]> connection = lettucePool.borrowObject())
-        // {
-        //            RedisCommands<String, String> command = connection.sync();
-        //            SetArgs setArgs = SetArgs.Builder.nx().ex(5);
-        //            command.set("name", "throwable", setArgs);
-        //            String n = command.get("name");
-        //            log.info("Get value:{}", n);
-        //        }catch (Exception e){
-        //
-        //        }
-        //        lettucePool.close();
-        //
-        //
-        //        StatefulRedisConnection<String, byte[]> connection = redisClient.connect();
-        //
-        //        RedisAsyncCommands<String, String> async = connection.async();
-        //        RedisFuture<String> stringRedisFuture = async.xgroupCreate();
-        //
-        //        connection.close();
-        //        redisClient.shutdown();
     }
 
     @Override
     public void close() throws Exception {
         if (this.lettucePool != null) {
+            this.topics
+                    .forEach(
+                            topic -> {
+                                try (StatefulRedisConnection<String, byte[]> conn = this.lettucePool.borrowObject()) {
+                                    RedisCommands<String, byte[]> commands = conn.sync();
+                                    commands.del(topic);
+                                } catch (Exception e) {
+                                    log.error("Failed to delete stream.", e);
+                                }
+                            });
+            this.topics.clear();
             this.lettucePool.close();
         }
     }
