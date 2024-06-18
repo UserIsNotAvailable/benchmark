@@ -66,6 +66,7 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
                                                     Consumer.from(this.subscriptionName, this.consumerId),
                                                     XReadArgs.StreamOffset.lastConsumed(this.topic));
                                     for (StreamMessage<String, byte[]> streamEntry : range) {
+                                        commands.xack(this.topic, this.subscriptionName, streamEntry.getId());
                                         long timestamp = Long.parseLong(streamEntry.getId().split("-")[0]);
                                         byte[] payload = streamEntry.getBody().get("payload");
                                         consumerCallback.messageReceived(payload, timestamp);
