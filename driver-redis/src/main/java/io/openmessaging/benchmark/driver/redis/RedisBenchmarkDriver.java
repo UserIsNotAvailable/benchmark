@@ -50,8 +50,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class RedisBenchmarkDriver implements BenchmarkDriver {
-    private GenericObjectPool<StatefulRedisConnection<String, byte[]>> lettucePool;
     private RedisClientConfig clientConfig;
+    private RedisClient redisClient;
+    private GenericObjectPool<StatefulRedisConnection<String, byte[]>> lettucePool;
     private final List<String> topics = new ArrayList<>();
 
     @Override
@@ -154,10 +155,11 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
             }
         }
 
+        this.redisClient = RedisClient.create(redisUri);
         this.lettucePool =
                 ConnectionPoolSupport.createGenericObjectPool(
                         () ->
-                                RedisClient.create(redisUri)
+                                this.redisClient
                                         .connect(
                                                 new RedisCodec<String, byte[]>() {
                                                     private final StringCodec keyCodec =
@@ -203,6 +205,9 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
                             });
             this.topics.clear();
             this.lettucePool.close();
+        }
+        if (this.redisClient != null) {
+            this.redisClient.close();
         }
     }
 
