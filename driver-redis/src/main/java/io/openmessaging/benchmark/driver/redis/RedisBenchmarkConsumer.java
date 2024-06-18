@@ -25,7 +25,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
-
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +70,8 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
                                         byte[] payload = streamEntry.getBody().get("payload");
                                         consumerCallback.messageReceived(payload, timestamp);
                                     }
+                                } catch (InterruptedException e) {
+                                    // ignore
                                 } catch (Exception e) {
                                     log.error("Failed to read from consumer instance.", e);
                                 }
@@ -83,6 +84,12 @@ public class RedisBenchmarkConsumer implements BenchmarkConsumer {
         closing = true;
         executor.shutdownNow();
         consumerTask.get();
+        try (StatefulRedisConnection<String, byte[]> conn = this.pool.borrowObject()) {
+            RedisCommands<String, byte[]> commands = conn.sync();
+            commands.del(this.topic);
+        } catch (Exception e) {
+            log.error("Failed to delete stream.", e);
+        }
 //        pool.close();
     }
 
