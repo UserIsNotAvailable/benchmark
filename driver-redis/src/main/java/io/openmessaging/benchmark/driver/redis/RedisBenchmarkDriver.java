@@ -21,14 +21,14 @@ import io.lettuce.core.RedisBusyException;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.StaticCredentialsProvider;
+import io.lettuce.core.XGroupCreateArgs;
+import io.lettuce.core.XReadArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.codec.RedisCodec;
 import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.support.ConnectionPoolSupport;
-import io.lettuce.core.XReadArgs;
-import io.lettuce.core.XGroupCreateArgs;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
@@ -95,7 +95,8 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
                                         CompletableFuture.supplyAsync(
                                                 () -> {
                                                     try {
-                                                        RedisBenchmarkConsumer consumer = ((RedisBenchmarkConsumer) future.get());
+                                                        RedisBenchmarkConsumer consumer =
+                                                                ((RedisBenchmarkConsumer) future.get());
                                                         consumer.start();
                                                         return (BenchmarkConsumer) consumer;
                                                     } catch (Exception e) {
@@ -159,50 +160,47 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
         this.lettucePool =
                 ConnectionPoolSupport.createGenericObjectPool(
                         () ->
-                                this.redisClient
-                                        .connect(
-                                                new RedisCodec<String, byte[]>() {
-                                                    private final StringCodec keyCodec =
-                                                            new StringCodec(StandardCharsets.UTF_8);
-                                                    private final ByteArrayCodec valueCodec = new ByteArrayCodec();
+                                this.redisClient.connect(
+                                        new RedisCodec<String, byte[]>() {
+                                            private final StringCodec keyCodec = new StringCodec(StandardCharsets.UTF_8);
+                                            private final ByteArrayCodec valueCodec = new ByteArrayCodec();
 
-                                                    @Override
-                                                    public String decodeKey(ByteBuffer bytes) {
-                                                        return keyCodec.decodeKey(bytes);
-                                                    }
+                                            @Override
+                                            public String decodeKey(ByteBuffer bytes) {
+                                                return keyCodec.decodeKey(bytes);
+                                            }
 
-                                                    @Override
-                                                    public byte[] decodeValue(ByteBuffer bytes) {
-                                                        return valueCodec.decodeValue(bytes);
-                                                    }
+                                            @Override
+                                            public byte[] decodeValue(ByteBuffer bytes) {
+                                                return valueCodec.decodeValue(bytes);
+                                            }
 
-                                                    @Override
-                                                    public ByteBuffer encodeKey(String key) {
-                                                        return keyCodec.encodeKey(key);
-                                                    }
+                                            @Override
+                                            public ByteBuffer encodeKey(String key) {
+                                                return keyCodec.encodeKey(key);
+                                            }
 
-                                                    @Override
-                                                    public ByteBuffer encodeValue(byte[] value) {
-                                                        return valueCodec.encodeValue(value);
-                                                    }
-                                                },
-                                                redisUri),
+                                            @Override
+                                            public ByteBuffer encodeValue(byte[] value) {
+                                                return valueCodec.encodeValue(value);
+                                            }
+                                        },
+                                        redisUri),
                         poolConfig);
     }
 
     @Override
     public void close() throws Exception {
         if (this.lettucePool != null) {
-            this.topics
-                    .forEach(
-                            topic -> {
-                                try (StatefulRedisConnection<String, byte[]> conn = this.lettucePool.borrowObject()) {
-                                    RedisCommands<String, byte[]> commands = conn.sync();
-                                    commands.del(topic);
-                                } catch (Exception e) {
-                                    log.error("Failed to delete stream.", e);
-                                }
-                            });
+            this.topics.forEach(
+                    topic -> {
+                        try (StatefulRedisConnection<String, byte[]> conn = this.lettucePool.borrowObject()) {
+                            RedisCommands<String, byte[]> commands = conn.sync();
+                            commands.del(topic);
+                        } catch (Exception e) {
+                            log.error("Failed to delete stream.", e);
+                        }
+                    });
             this.topics.clear();
             this.lettucePool.close();
         }

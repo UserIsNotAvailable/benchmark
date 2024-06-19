@@ -58,7 +58,8 @@ public class HttpWorkerClient implements Worker {
     private final String host;
 
     public HttpWorkerClient(String host) {
-        this(asyncHttpClient(Dsl.config().setReadTimeout(1_800_000).setRequestTimeout(1_800_000)), host);
+        this(
+                asyncHttpClient(Dsl.config().setReadTimeout(1_800_000).setRequestTimeout(1_800_000)), host);
     }
 
     HttpWorkerClient(AsyncHttpClient httpClient, String host) {

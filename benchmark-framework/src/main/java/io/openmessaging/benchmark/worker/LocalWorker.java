@@ -293,40 +293,34 @@ public class LocalWorker implements Worker, ConsumerCallback {
         try {
             Thread.sleep(100);
 
-            CompletableFuture
-                    .allOf(
-                            producers
-                                    .stream()
+            CompletableFuture.allOf(
+                            producers.stream()
                                     .map(
                                             pi ->
-                                                    CompletableFuture
-                                                            .runAsync(
-                                                                    () -> {
-                                                                        try {
-                                                                            pi.close();
-                                                                        } catch (Exception e) {
-                                                                            log.error("Producer shutdown error.", e);
-                                                                        }
-                                                                    }))
+                                                    CompletableFuture.runAsync(
+                                                            () -> {
+                                                                try {
+                                                                    pi.close();
+                                                                } catch (Exception e) {
+                                                                    log.error("Producer shutdown error.", e);
+                                                                }
+                                                            }))
                                     .toArray(CompletableFuture[]::new))
                     .join();
             producers.clear();
 
-            CompletableFuture
-                    .allOf(
-                            consumers
-                                    .stream()
+            CompletableFuture.allOf(
+                            consumers.stream()
                                     .map(
                                             ci ->
-                                                    CompletableFuture
-                                                            .runAsync(
-                                                                    () -> {
-                                                                        try {
-                                                                            ci.close();
-                                                                        } catch (Exception e) {
-                                                                            log.error("Consumer shutdown error.", e);
-                                                                        }
-                                                                    }))
+                                                    CompletableFuture.runAsync(
+                                                            () -> {
+                                                                try {
+                                                                    ci.close();
+                                                                } catch (Exception e) {
+                                                                    log.error("Consumer shutdown error.", e);
+                                                                }
+                                                            }))
                                     .toArray(CompletableFuture[]::new))
                     .join();
             consumers.clear();
