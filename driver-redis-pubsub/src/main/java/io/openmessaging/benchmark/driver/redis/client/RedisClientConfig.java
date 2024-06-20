@@ -18,6 +18,5 @@ public class RedisClientConfig {
     public String redisUser;
     public String redisPass;
     public Integer redisPort;
-    public Integer jedisPoolMaxTotal;
-    public Integer jedisPoolMaxIdle;
+    public Integer poolSize;
 }
