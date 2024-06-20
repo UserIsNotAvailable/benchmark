@@ -192,6 +192,7 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
     @Override
     public void close() throws Exception {
         if (this.lettucePool != null) {
+            log.info("Delete topics.");
             this.topics.forEach(
                     topic -> {
                         try (StatefulRedisConnection<String, byte[]> conn = this.lettucePool.borrowObject()) {
@@ -202,6 +203,7 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
                         }
                     });
             this.topics.clear();
+            log.info("Topics deleted.");
             this.lettucePool.close();
         }
         if (this.redisClient != null) {

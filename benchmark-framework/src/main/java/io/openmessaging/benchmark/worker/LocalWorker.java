@@ -292,7 +292,7 @@ public class LocalWorker implements Worker, ConsumerCallback {
 
         try {
             Thread.sleep(100);
-
+            log.info("Delete producers.");
             CompletableFuture.allOf(
                             producers.stream()
                                     .map(
@@ -307,8 +307,10 @@ public class LocalWorker implements Worker, ConsumerCallback {
                                                             }))
                                     .toArray(CompletableFuture[]::new))
                     .join();
+            log.info("Producers deleted.");
             producers.clear();
 
+            log.info("Delete consumers.");
             CompletableFuture.allOf(
                             consumers.stream()
                                     .map(
@@ -323,10 +325,13 @@ public class LocalWorker implements Worker, ConsumerCallback {
                                                             }))
                                     .toArray(CompletableFuture[]::new))
                     .join();
+            log.info("Consumers deleted.");
             consumers.clear();
 
             if (benchmarkDriver != null) {
+                log.info("Close benchmark driver.");
                 benchmarkDriver.close();
+                log.info("Benchmark driver closed.");
                 benchmarkDriver = null;
             }
         } catch (Exception e) {
