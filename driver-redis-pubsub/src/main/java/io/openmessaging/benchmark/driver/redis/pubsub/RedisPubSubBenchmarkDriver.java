@@ -79,7 +79,11 @@ public class RedisPubSubBenchmarkDriver implements BenchmarkDriver {
             setupLettuceConn();
         }
         return CompletableFuture.completedFuture(
-                new RedisPubSubBenchmarkProducer(producerId, topic, this.writer, this.lettucePool));
+                new RedisPubSubBenchmarkProducer(
+                        producerId,
+                        topic,
+                        this.writer,
+                        this.lettucePool.get(producerId % this.lettucePool.size())));
     }
 
     @Override
@@ -91,7 +95,11 @@ public class RedisPubSubBenchmarkDriver implements BenchmarkDriver {
         }
         return CompletableFuture.completedFuture(
                 new RedisPubSubBenchmarkConsumer(
-                        consumerId, topic, this.reader, this.lettucePool, consumerCallback));
+                        consumerId,
+                        topic,
+                        this.reader,
+                        this.lettucePool.get(consumerId % this.lettucePool.size()),
+                        consumerCallback));
     }
 
     private void setupLettuceConn() {

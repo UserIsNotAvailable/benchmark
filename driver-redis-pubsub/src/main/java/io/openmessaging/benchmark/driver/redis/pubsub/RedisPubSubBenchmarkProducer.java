@@ -20,7 +20,6 @@ import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.sync.RedisPubSubCommands;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -29,17 +28,17 @@ public class RedisPubSubBenchmarkProducer implements BenchmarkProducer {
     private final Integer producerId;
     private final String topic;
     private final ObjectWriter writer;
-    private final List<StatefulRedisPubSubConnection<String, byte[]>> pool;
+    private final StatefulRedisPubSubConnection<String, byte[]> conn;
 
     public RedisPubSubBenchmarkProducer(
             final Integer producerId,
             final String topic,
             final ObjectWriter writer,
-            final List<StatefulRedisPubSubConnection<String, byte[]>> pool) {
+            final StatefulRedisPubSubConnection<String, byte[]> conn) {
         this.producerId = producerId;
         this.topic = topic;
         this.writer = writer;
-        this.pool = pool;
+        this.conn = conn;
     }
 
     @Override
@@ -62,8 +61,7 @@ public class RedisPubSubBenchmarkProducer implements BenchmarkProducer {
 
         CompletableFuture<Void> future = new CompletableFuture<>();
         try {
-            StatefulRedisPubSubConnection<String, byte[]> conn = this.pool.get(producerId % pool.size());
-            RedisPubSubCommands<String, byte[]> commands = conn.sync();
+            RedisPubSubCommands<String, byte[]> commands = this.conn.sync();
             commands.publish(this.topic, this.writer.writeValueAsBytes(map));
             future.complete(null);
         } catch (Exception e) {

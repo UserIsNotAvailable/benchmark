@@ -79,11 +79,11 @@
     <Bug pattern="EI_EXPOSE_REP2" />
   </Match>
   <Match>
-    <Class name="io.openmessaging.benchmark.driver.redis.RedisPubSubBenchmarkConsumer" />
+    <Class name="io.openmessaging.benchmark.driver.redis.pubsub.RedisPubSubBenchmarkConsumer" />
     <Bug pattern="EI_EXPOSE_REP2" />
   </Match>
   <Match>
-    <Class name="io.openmessaging.benchmark.driver.redis.RedisPubSubBenchmarkProducer" />
+    <Class name="io.openmessaging.benchmark.driver.redis.pubsub.RedisPubSubBenchmarkProducer" />
     <Bug pattern="EI_EXPOSE_REP2" />
   </Match>
   <Match>

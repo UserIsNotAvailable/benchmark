@@ -20,7 +20,6 @@ import io.lettuce.core.pubsub.api.sync.RedisPubSubCommands;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +28,7 @@ public class RedisPubSubBenchmarkConsumer implements BenchmarkConsumer {
     private final Integer consumerId;
     private final String topic;
     private final ObjectReader reader;
-    private final List<StatefulRedisPubSubConnection<String, byte[]>> pool;
+    private final StatefulRedisPubSubConnection<String, byte[]> conn;
     private final ConsumerCallback consumerCallback;
     private final RedisPubSubAdapter<String, byte[]> listener;
 
@@ -37,12 +36,12 @@ public class RedisPubSubBenchmarkConsumer implements BenchmarkConsumer {
             final Integer consumerId,
             final String topic,
             final ObjectReader reader,
-            final List<StatefulRedisPubSubConnection<String, byte[]>> pool,
+            final StatefulRedisPubSubConnection<String, byte[]> conn,
             ConsumerCallback consumerCallback) {
         this.consumerId = consumerId;
         this.topic = topic;
         this.reader = reader;
-        this.pool = pool;
+        this.conn = conn;
         this.consumerCallback = consumerCallback;
         this.listener =
                 new RedisPubSubAdapter<String, byte[]>() {
@@ -64,10 +63,8 @@ public class RedisPubSubBenchmarkConsumer implements BenchmarkConsumer {
                 };
 
         try {
-            StatefulRedisPubSubConnection<String, byte[]> conn =
-                    this.pool.get(this.consumerId % pool.size());
-            conn.addListener(this.listener);
-            RedisPubSubCommands<String, byte[]> commands = conn.sync();
+            this.conn.addListener(this.listener);
+            RedisPubSubCommands<String, byte[]> commands = this.conn.sync();
             commands.subscribe(this.topic);
         } catch (Exception e) {
             log.error("Failed to read from consumer instance.", e);
@@ -76,10 +73,8 @@ public class RedisPubSubBenchmarkConsumer implements BenchmarkConsumer {
 
     @Override
     public void close() throws Exception {
-        StatefulRedisPubSubConnection<String, byte[]> conn =
-                this.pool.get(this.consumerId % pool.size());
-        conn.sync().unsubscribe(this.topic);
-        conn.removeListener(this.listener);
+        this.conn.sync().unsubscribe(this.topic);
+        this.conn.removeListener(this.listener);
     }
 
     private static final Logger log = LoggerFactory.getLogger(RedisPubSubBenchmarkDriver.class);
