@@ -24,13 +24,13 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RedisPubSubBenchmarkConsumer implements BenchmarkConsumer {
+public class RedisPubSubBenchmarkConsumer extends RedisPubSubAdapter<String, byte[]>
+        implements BenchmarkConsumer {
     private final Integer consumerId;
     private final String topic;
     private final ObjectReader reader;
     private final StatefulRedisPubSubConnection<String, byte[]> conn;
     private final ConsumerCallback consumerCallback;
-    private final RedisPubSubAdapter<String, byte[]> listener;
 
     public RedisPubSubBenchmarkConsumer(
             final Integer consumerId,
@@ -43,30 +43,9 @@ public class RedisPubSubBenchmarkConsumer implements BenchmarkConsumer {
         this.reader = reader;
         this.conn = conn;
         this.consumerCallback = consumerCallback;
-        this.listener =
-                new RedisPubSubAdapter<String, byte[]>() {
-                    @Override
-                    public void message(String channel, byte[] message) {
-                        if (!topic.equals(channel)) {
-                            return;
-                        }
-                        Map<String, byte[]> map;
-                        try {
-                            map = reader.readValue(message);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                        byte[] payload = map.get("payload");
-                        long timestamp = 0;
-                        for (int i = 0; i < Long.BYTES; i++) {
-                            timestamp = (timestamp << 8) + (payload[i] & 0xFF);
-                        }
-                        consumerCallback.messageReceived(payload, timestamp);
-                    }
-                };
 
         try {
-            this.conn.addListener(this.listener);
+            this.conn.addListener(this);
             RedisPubSubCommands<String, byte[]> commands = this.conn.sync();
             commands.subscribe(this.topic);
         } catch (Exception e) {
@@ -75,9 +54,28 @@ public class RedisPubSubBenchmarkConsumer implements BenchmarkConsumer {
     }
 
     @Override
+    public void message(String channel, byte[] message) {
+        if (!topic.equals(channel)) {
+            return;
+        }
+        Map<String, byte[]> map;
+        try {
+            map = reader.readValue(message);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        byte[] payload = map.get("payload");
+        long timestamp = 0;
+        for (int i = 0; i < Long.BYTES; i++) {
+            timestamp = (timestamp << 8) + (payload[i] & 0xFF);
+        }
+        consumerCallback.messageReceived(payload, timestamp);
+    }
+
+    @Override
     public void close() throws Exception {
         this.conn.sync().unsubscribe(this.topic);
-        this.conn.removeListener(this.listener);
+        this.conn.removeListener(this);
     }
 
     private static final Logger log = LoggerFactory.getLogger(RedisPubSubBenchmarkDriver.class);
