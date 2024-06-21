@@ -12,10 +12,10 @@
 # limitations under the License.
 #
 
-name: Redis
-driverClass: io.openmessaging.benchmark.driver.redis.RedisBenchmarkDriver
+name: RedisPubsub
+driverClass: io.openmessaging.benchmark.driver.redis.pubsub.RedisPubSubBenchmarkDriver
 
 # Redis client-specific configuration
 redisPort: 6379
 redisHost: 127.0.0.1
-poolSize: 64
+poolSize: 32

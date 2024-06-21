@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.openmessaging.benchmark.driver.redis;
+package io.openmessaging.benchmark.driver.redis.pubsub;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 

@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.openmessaging.benchmark.driver.redis.client;
+package io.openmessaging.benchmark.driver.redis.pubsub.client;
 
 public class RedisClientConfig {
     public String redisHost;

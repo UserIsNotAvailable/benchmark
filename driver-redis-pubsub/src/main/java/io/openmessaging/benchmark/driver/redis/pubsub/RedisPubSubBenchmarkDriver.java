@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.openmessaging.benchmark.driver.redis;
+package io.openmessaging.benchmark.driver.redis.pubsub;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -31,7 +31,7 @@ import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.BenchmarkDriver;
 import io.openmessaging.benchmark.driver.BenchmarkProducer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
-import io.openmessaging.benchmark.driver.redis.client.RedisClientConfig;
+import io.openmessaging.benchmark.driver.redis.pubsub.client.RedisClientConfig;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
