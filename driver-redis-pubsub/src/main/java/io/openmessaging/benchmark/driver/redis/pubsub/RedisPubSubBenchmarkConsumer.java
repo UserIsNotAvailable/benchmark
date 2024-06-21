@@ -47,6 +47,9 @@ public class RedisPubSubBenchmarkConsumer implements BenchmarkConsumer {
                 new RedisPubSubAdapter<String, byte[]>() {
                     @Override
                     public void message(String channel, byte[] message) {
+                        if (!topic.equals(channel)) {
+                            return;
+                        }
                         Map<String, byte[]> map;
                         try {
                             map = reader.readValue(message);
