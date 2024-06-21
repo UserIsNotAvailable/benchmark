@@ -79,6 +79,14 @@
     <Bug pattern="EI_EXPOSE_REP2" />
   </Match>
   <Match>
+    <Class name="io.openmessaging.benchmark.driver.redis.RedisPubSubBenchmarkConsumer" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
+    <Class name="io.openmessaging.benchmark.driver.redis.RedisPubSubBenchmarkProducer" />
+    <Bug pattern="EI_EXPOSE_REP2" />
+  </Match>
+  <Match>
     <Class name="io.openmessaging.benchmark.ResultsToCsv" />
     <Bug pattern="DM_DEFAULT_ENCODING" />
   </Match>
