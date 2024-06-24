@@ -13,14 +13,12 @@
  */
 package io.openmessaging.benchmark.driver.rabbitmq;
 
+import com.rabbitmq.client.*;
 import com.rabbitmq.client.AMQP.BasicProperties;
-import com.rabbitmq.client.AlreadyClosedException;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.DefaultConsumer;
-import com.rabbitmq.client.Envelope;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
 import java.io.IOException;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,15 +27,28 @@ public class RabbitMqBenchmarkConsumer extends DefaultConsumer implements Benchm
     private static final Logger log = LoggerFactory.getLogger(RabbitMqBenchmarkConsumer.class);
 
     private final Channel channel;
+    private final String exchange;
+    private final String queueName;
     private final ConsumerCallback callback;
 
-    public RabbitMqBenchmarkConsumer(Channel channel, String queueName, ConsumerCallback callback)
+    public RabbitMqBenchmarkConsumer(
+            Channel channel,
+            String exchange,
+            String queueName,
+            Map<String, Object> arguments,
+            ConsumerCallback callback)
             throws IOException {
         super(channel);
 
         this.channel = channel;
+        this.exchange = exchange;
         this.callback = callback;
-        channel.basicConsume(queueName, true, this);
+        this.queueName = queueName;
+        this.channel.exchangeDeclare(this.exchange, BuiltinExchangeType.FANOUT, true);
+        // Create the queue
+        this.channel.queueDeclare(this.queueName, true, false, false, arguments);
+        this.channel.queueBind(this.queueName, this.exchange, "");
+        this.channel.basicConsume(this.queueName, true, this);
     }
 
     @Override
@@ -48,6 +59,21 @@ public class RabbitMqBenchmarkConsumer extends DefaultConsumer implements Benchm
 
     @Override
     public void close() throws Exception {
+        try {
+            channel.queueUnbind(this.queueName, this.exchange, "");
+        } catch (Exception e) {
+            log.warn("Queue delete error", e);
+        }
+        try {
+            channel.queueDelete(this.queueName);
+        } catch (Exception e) {
+            log.warn("Queue delete error", e);
+        }
+        try {
+            channel.exchangeDelete(this.exchange);
+        } catch (Exception e) {
+            log.warn("Exchange delete error", e);
+        }
         try {
             channel.close();
         } catch (AlreadyClosedException e) {

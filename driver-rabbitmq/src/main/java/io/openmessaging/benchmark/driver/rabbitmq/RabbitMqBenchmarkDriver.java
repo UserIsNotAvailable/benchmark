@@ -190,13 +190,13 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                                 Channel channel = connection.createChannel();
                                 String exchange = getExchangeName(topic);
                                 String queueName = exchange + "-" + subscriptionName;
-                                channel.exchangeDeclare(exchange, BuiltinExchangeType.FANOUT, true);
-                                // Create the queue
-                                channel.queueDeclare(
-                                        queueName, true, false, false, config.queueType.queueOptions());
-                                channel.queueBind(queueName, exchange, "");
                                 future.complete(
-                                        new RabbitMqBenchmarkConsumer(channel, queueName, consumerCallback));
+                                        new RabbitMqBenchmarkConsumer(
+                                                channel,
+                                                exchange,
+                                                queueName,
+                                                config.queueType.queueOptions(),
+                                                consumerCallback));
                             } catch (IOException e) {
                                 future.completeExceptionally(e);
                             }
@@ -229,6 +229,7 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
                     try {
                         ConnectionFactory connectionFactory = new ConnectionFactory();
                         connectionFactory.setAutomaticRecoveryEnabled(true);
+                        connectionFactory.setRequestedChannelMax(65535);
                         String userInfo = newURI(primaryBrokerUri).getUserInfo();
                         if (userInfo != null) {
                             String[] userInfoElems = userInfo.split(":");
