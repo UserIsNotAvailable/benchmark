@@ -19,9 +19,9 @@ driverClass: io.openmessaging.benchmark.driver.rabbitmq.RabbitMqBenchmarkDriver
 # RabbitMq client specific configurations
 
 producerCreationDelay: 100
-producerCreationBatchSize: 20
+producerCreationBatchSize: 50
 consumerCreationDelay: 100
-consumerCreationBatchSize: 20
+consumerCreationBatchSize: 50
 
 amqpUris:
   - amqp://localhost
