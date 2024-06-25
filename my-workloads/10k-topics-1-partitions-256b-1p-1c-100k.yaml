@@ -13,7 +13,7 @@
 #
 
 name: "10k-topics-1-partitions-256b-1p-1c-100k"
-topics: 1
+topics: 10000
 partitionsPerTopic: 1
 keyDistributor: "NO_KEY"
 messageSize: 256
@@ -24,7 +24,7 @@ payloadFile: null
 subscriptionsPerTopic: 1
 producersPerTopic: 1
 consumerPerSubscription: 1
-producerRate: 1
+producerRate: 100000
 consumerBacklogSizeGB: 0
 backlogDrainRatio: 1.0
 testDurationMinutes: 5
