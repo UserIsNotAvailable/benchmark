@@ -18,4 +18,4 @@ driverClass: io.openmessaging.benchmark.driver.redis.pubsub.RedisPubSubBenchmark
 # Redis client-specific configuration
 redisPort: 6379
 redisHost: 127.0.0.1
-poolSize: 32
+poolSize: 64
