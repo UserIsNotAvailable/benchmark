@@ -24,7 +24,7 @@ payloadFile: null
 subscriptionsPerTopic: 35000
 producersPerTopic: 1
 consumerPerSubscription: 1
-producerRate: 350000
+producerRate: 500
 consumerBacklogSizeGB: 0
 backlogDrainRatio: 1.0
 testDurationMinutes: 5
