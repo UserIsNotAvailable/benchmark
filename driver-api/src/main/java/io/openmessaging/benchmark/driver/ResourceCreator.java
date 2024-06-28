@@ -47,7 +47,8 @@ public class ResourceCreator<R, C> {
     }
 
     private List<C> createBlocking(List<R> resources) {
-        BlockingQueue<R> queue = new ArrayBlockingQueue<>(resources.size(), true, resources);
+        BlockingQueue<R> queue =
+                new ArrayBlockingQueue<>(Math.max(resources.size(), 1), true, resources);
         List<R> batch = new ArrayList<>();
         List<C> created = new ArrayList<>();
         AtomicInteger succeeded = new AtomicInteger();
