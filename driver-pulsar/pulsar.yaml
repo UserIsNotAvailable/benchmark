@@ -23,7 +23,7 @@ client:
   connectionsPerBroker: 8
   clusterName: local
   namespacePrefix: benchmark/ns
-  topicType: persistent
+  topicType: non_persistent
   persistence:
     ensembleSize: 3
     writeQuorum: 3
