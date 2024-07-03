@@ -22,6 +22,7 @@ import io.openmessaging.benchmark.driver.BenchmarkDriver.TopicInfo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -30,9 +31,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.ListTopicsOptions;
+import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.errors.TopicExistsException;
@@ -52,7 +56,11 @@ class KafkaTopicCreator {
     }
 
     CompletableFuture<Void> create(List<TopicInfo> topicInfos) {
-        return CompletableFuture.runAsync(() -> createBlocking(topicInfos));
+        return CompletableFuture.runAsync(
+                () -> {
+                    createBlocking(topicInfos);
+                    waitUntilAllTopicsCreated(topicInfos);
+                });
     }
 
     private void createBlocking(List<TopicInfo> topicInfos) {
@@ -108,7 +116,7 @@ class KafkaTopicCreator {
 
     private boolean isSuccess(KafkaFuture<Void> future) {
         try {
-            future.get();
+            Void unused = future.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
@@ -117,5 +125,21 @@ class KafkaTopicCreator {
             return e.getCause() instanceof TopicExistsException;
         }
         return true;
+    }
+
+    private void waitUntilAllTopicsCreated(List<TopicInfo> topicInfos) {
+        Set<String> topics = topicInfos.stream().map(TopicInfo::getTopic).collect(Collectors.toSet());
+        while (!topics.isEmpty()) {
+            try {
+                Thread.sleep(1000);
+                ListTopicsResult createdTopics =
+                        admin.listTopics(new ListTopicsOptions().listInternal(true));
+                Set<String> currentTopicList = createdTopics.names().get();
+                topics.removeAll(currentTopicList);
+                log.info("Created topics {}", currentTopicList.size());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }

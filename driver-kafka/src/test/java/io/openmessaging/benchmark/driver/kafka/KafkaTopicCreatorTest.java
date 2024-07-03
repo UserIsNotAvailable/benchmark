@@ -25,9 +25,11 @@ import io.openmessaging.benchmark.driver.BenchmarkDriver.TopicInfo;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
+import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.errors.TopicExistsException;
@@ -49,6 +51,7 @@ class KafkaTopicCreatorTest {
     private final TopicInfo topicInfo = new TopicInfo(topic, partitions);
     @Mock private AdminClient admin;
     @Mock private CreateTopicsResult createTopicsResult;
+    @Mock private ListTopicsResult listTopicsResult;
     @Captor private ArgumentCaptor<List<NewTopic>> captor;
     private KafkaTopicCreator topicCreator;
 
@@ -58,6 +61,10 @@ class KafkaTopicCreatorTest {
         topicCreator = new KafkaTopicCreator(admin, topicConfigs, replicationFactor, maxBatchSize);
 
         when(admin.createTopics(any())).thenAnswer(__ -> createTopicsResult);
+        when(admin.listTopics(any())).thenAnswer(__ -> listTopicsResult);
+
+        KafkaFuture<Set<String>> future = KafkaFuture.completedFuture(Set.of(topic));
+        when(listTopicsResult.names()).thenReturn(future);
     }
 
     @Test
