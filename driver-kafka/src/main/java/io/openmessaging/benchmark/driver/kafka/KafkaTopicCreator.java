@@ -116,7 +116,7 @@ class KafkaTopicCreator {
 
     private boolean isSuccess(KafkaFuture<Void> future) {
         try {
-            Void unused = future.get();
+            future.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
