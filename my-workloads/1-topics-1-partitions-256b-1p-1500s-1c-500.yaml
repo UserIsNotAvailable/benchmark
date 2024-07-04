@@ -12,7 +12,7 @@
 # limitations under the License.
 #
 
-name: "1-topics-1-partitions-256b-1p-1c-100k"
+name: "1-topics-1-partitions-256b-1p-1500s-1c-500"
 topics: 1
 partitionsPerTopic: 1
 keyDistributor: "NO_KEY"
@@ -21,7 +21,7 @@ useRandomizedPayloads: true
 randomBytesRatio: 0.5
 randomizedPayloadPoolSize: 1000
 payloadFile: null
-subscriptionsPerTopic: 10000
+subscriptionsPerTopic: 1500
 producersPerTopic: 1
 consumerPerSubscription: 1
 producerRate: 500

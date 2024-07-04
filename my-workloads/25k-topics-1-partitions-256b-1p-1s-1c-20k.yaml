@@ -12,7 +12,7 @@
 # limitations under the License.
 #
 
-name: "25k-topics-1-partitions-256b-1p-1c-250k"
+name: "25k-topics-1-partitions-256b-1p-1s-1c-20k"
 topics: 25000
 partitionsPerTopic: 1
 keyDistributor: "NO_KEY"

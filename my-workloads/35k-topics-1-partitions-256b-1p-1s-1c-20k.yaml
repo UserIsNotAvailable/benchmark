@@ -12,8 +12,8 @@
 # limitations under the License.
 #
 
-name: "15k-topics-1-partitions-256b-1p-1c-150k"
-topics: 15000
+name: "35k-topics-1-partitions-256b-1p-1s-1c-20k"
+topics: 35000
 partitionsPerTopic: 1
 keyDistributor: "NO_KEY"
 messageSize: 256

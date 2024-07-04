@@ -12,8 +12,8 @@
 # limitations under the License.
 #
 
-name: "40k-topics-1-partitions-256b-1p-1c-400k"
-topics: 40000
+name: "1-topics-1-partitions-256b-1p-3000s-1c-500"
+topics: 1
 partitionsPerTopic: 1
 keyDistributor: "NO_KEY"
 messageSize: 256
@@ -21,10 +21,10 @@ useRandomizedPayloads: true
 randomBytesRatio: 0.5
 randomizedPayloadPoolSize: 1000
 payloadFile: null
-subscriptionsPerTopic: 1
+subscriptionsPerTopic: 3000
 producersPerTopic: 1
 consumerPerSubscription: 1
-producerRate: 20000
+producerRate: 500
 consumerBacklogSizeGB: 0
 backlogDrainRatio: 1.0
 testDurationMinutes: 5
