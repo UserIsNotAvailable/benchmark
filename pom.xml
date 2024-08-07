@@ -56,6 +56,7 @@
         <module>driver-jms</module>
         <module>driver-redis</module>
         <module>driver-redis-pubsub</module>
+        <module>driver-vertx</module>
         <module>package</module>
         <module>docker</module>
         <module>driver-kop</module>
