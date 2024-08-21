@@ -14,9 +14,11 @@
 package io.openmessaging.benchmark.driver.vertx.client;
 
 public class VertxClientConfig {
-    public String pushHost;
+
+    public static final String TYPE_SEND = "s";
+    public static final String TYPE_PUBLISH = "p";
 
     public String pushPath;
     public String webSocketUrl;
-    public Integer poolSize;
+    public String sendType;
 }

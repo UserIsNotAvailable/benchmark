@@ -31,13 +31,19 @@ public class VertxBenchmarkProducer implements BenchmarkProducer {
     private final String path;
     private final AsyncHttpClient httpClient;
 
+    private final String sendType;
+
     ObjectMapper objectMapper = new ObjectMapper();
 
     public VertxBenchmarkProducer(
-            final String topic, final String path, final AsyncHttpClient httpClient) {
+            final String topic,
+            final String path,
+            final AsyncHttpClient httpClient,
+            final String sendType) {
         this.topic = topic;
         this.path = path;
         this.httpClient = httpClient;
+        this.sendType = sendType;
     }
 
     @Override
@@ -57,7 +63,7 @@ public class VertxBenchmarkProducer implements BenchmarkProducer {
 
         httpClient
                 .preparePost(this.path)
-                .setHeader("spcls", "s")
+                .setHeader("spcls", this.sendType)
                 .setHeader("uc", topic)
                 .setBody(body)
                 .execute()

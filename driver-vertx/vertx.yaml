@@ -16,7 +16,6 @@ name: Vertx
 driverClass: io.openmessaging.benchmark.driver.vertx.VertxBenchmarkDriver
 
 # Redis client-specific configuration
-pushHost: http://localhost:8888/
 pushPath: push/server
 webSocketUrl: ws://localhost:9000/
-poolSize: 64
+sendType: s

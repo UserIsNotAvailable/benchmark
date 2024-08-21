@@ -22,9 +22,11 @@ import io.netty.handler.codec.http.websocketx.*;
 import io.netty.handler.codec.http.websocketx.extensions.compression.WebSocketClientCompressionHandler;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
+import io.openmessaging.benchmark.driver.vertx.client.VertxClientConfig;
 import java.net.URI;
 import java.util.Base64;
 import java.util.Map;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,8 +37,13 @@ public class VertxBenchmarkConsumer implements BenchmarkConsumer {
     public VertxBenchmarkConsumer(
             final EventLoopGroup group,
             final URI uri,
-            final String topic,
-            ConsumerCallback consumerCallback) {
+            String topic,
+            ConsumerCallback consumerCallback,
+            final String sendType) {
+
+        if (sendType.equals(VertxClientConfig.TYPE_PUBLISH)) {
+            topic = UUID.randomUUID().toString();
+        }
 
         final WebSocketClientHandler handler =
                 new WebSocketClientHandler(

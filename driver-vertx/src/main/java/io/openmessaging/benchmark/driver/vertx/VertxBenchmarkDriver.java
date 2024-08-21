@@ -76,14 +76,16 @@ public class VertxBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(final String topic) {
         return CompletableFuture.completedFuture(
-                new VertxBenchmarkProducer(topic, this.clientConfig.pushPath, this.asyncHttpClient));
+                new VertxBenchmarkProducer(
+                        topic, this.clientConfig.pushPath, this.asyncHttpClient, this.clientConfig.sendType));
     }
 
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(
             final String topic, final String subscriptionName, final ConsumerCallback consumerCallback) {
         return CompletableFuture.completedFuture(
-                new VertxBenchmarkConsumer(eventLoopGroup, webSocketUri, topic, consumerCallback));
+                new VertxBenchmarkConsumer(
+                        eventLoopGroup, webSocketUri, topic, consumerCallback, clientConfig.sendType));
     }
 
     private void setupLettuceConn() {}
