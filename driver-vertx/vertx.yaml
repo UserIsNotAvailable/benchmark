@@ -16,6 +16,6 @@ name: Vertx
 driverClass: io.openmessaging.benchmark.driver.vertx.VertxBenchmarkDriver
 
 # Redis client-specific configuration
-pushPath: push/server
-webSocketUrl: ws://localhost:9000/
-sendType: s
+pushPath: http://host.docker.internal:8888/push
+webSocketUrl: ws://host.docker.internal:80/push/server
+sendType: p
