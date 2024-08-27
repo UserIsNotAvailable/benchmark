@@ -34,6 +34,12 @@ public class VertxBenchmarkConsumer implements BenchmarkConsumer {
 
     private Channel ch;
 
+    private final String topic;
+    private final ConsumerCallback callback;
+    private final URI uri;
+    private final EventLoopGroup group;
+    private WebSocketClientHandler handler;
+
     public VertxBenchmarkConsumer(
             final EventLoopGroup group,
             final URI uri,
@@ -44,12 +50,20 @@ public class VertxBenchmarkConsumer implements BenchmarkConsumer {
         if (sendType.equals(VertxClientConfig.TYPE_PUBLISH)) {
             topic = UUID.randomUUID().toString();
         }
+        this.group = group;
+        this.topic = topic;
+        this.uri = uri;
+        this.callback = consumerCallback;
+        connect();
+    }
 
-        final WebSocketClientHandler handler =
+    private void connect() {
+        this.handler =
                 new WebSocketClientHandler(
+                        this,
                         WebSocketClientHandshakerFactory.newHandshaker(
                                 uri, WebSocketVersion.V13, "push," + topic, true, new DefaultHttpHeaders()),
-                        consumerCallback);
+                        callback);
 
         Bootstrap bootstrap = new Bootstrap();
         bootstrap
@@ -83,6 +97,7 @@ public class VertxBenchmarkConsumer implements BenchmarkConsumer {
 
     @Override
     public void close() throws Exception {
+        handler.isConnect = false;
         ch.close();
     }
 
@@ -98,8 +113,15 @@ public class VertxBenchmarkConsumer implements BenchmarkConsumer {
 
         private final ObjectMapper objectMapper = new ObjectMapper();
 
+        private final VertxBenchmarkConsumer consumer;
+
+        private boolean isConnect = false;
+
         public WebSocketClientHandler(
-                WebSocketClientHandshaker handshaker, ConsumerCallback consumerCallback) {
+                VertxBenchmarkConsumer consumer,
+                WebSocketClientHandshaker handshaker,
+                ConsumerCallback consumerCallback) {
+            this.consumer = consumer;
             this.handshaker = handshaker;
             this.consumerCallback = consumerCallback;
         }
@@ -112,6 +134,7 @@ public class VertxBenchmarkConsumer implements BenchmarkConsumer {
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
             handshaker.handshake(ctx.channel());
+            isConnect = true;
             // ctx.writeAndFlush(
             //        new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/push/server"));
         }
@@ -119,6 +142,10 @@ public class VertxBenchmarkConsumer implements BenchmarkConsumer {
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
             log.debug("WebSocket Client disconnected!");
+            if (isConnect) {
+                consumer.connect();
+                log.debug("WebSocket Client reconnect!");
+            }
         }
 
         @Override
