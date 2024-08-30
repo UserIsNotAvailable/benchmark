@@ -13,7 +13,6 @@
  */
 package io.openmessaging.benchmark.driver.vertx;
 
-import static io.openmessaging.benchmark.driver.vertx.client.VertxClientConfig.TYPE_SEND;
 import static org.asynchttpclient.Dsl.asyncHttpClient;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -43,7 +42,7 @@ public class VertxBenchmarkDriver implements BenchmarkDriver {
     private AsyncHttpClient asyncHttpClient;
     private URI webSocketUri;
 
-    private final AtomicLong topic = new AtomicLong(1000000);
+    private final AtomicLong topic = new AtomicLong(1);
 
     @Override
     public void initialize(final File configurationFile, final StatsLogger statsLogger)
@@ -67,14 +66,17 @@ public class VertxBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<String> createTopic(final String topic, final int partitions) {
-        return CompletableFuture.supplyAsync(() -> String.valueOf(this.topic.incrementAndGet()));
+        return CompletableFuture.supplyAsync(() -> String.valueOf(this.topic.getAndIncrement()));
     }
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(final String topic) {
         return CompletableFuture.completedFuture(
                 new VertxBenchmarkProducer(
-                        topic, this.clientConfig.pushPath, this.asyncHttpClient, this.clientConfig.sendType));
+                        topic + "0000000",
+                        this.clientConfig.pushPath,
+                        this.asyncHttpClient,
+                        this.clientConfig.sendType));
     }
 
     @Override
@@ -83,9 +85,7 @@ public class VertxBenchmarkDriver implements BenchmarkDriver {
         return VertxBenchmarkConsumer.create(
                         this.eventLoopGroup,
                         this.webSocketUri,
-                        TYPE_SEND.equals(this.clientConfig.sendType)
-                                ? topic
-                                : subscriptionName.substring(4, 14),
+                        topic + subscriptionName.substring(4, 11),
                         consumerCallback)
                 .thenApply(vertxBenchmarkConsumer -> vertxBenchmarkConsumer);
     }
@@ -93,7 +93,7 @@ public class VertxBenchmarkDriver implements BenchmarkDriver {
     @Override
     public void close() throws Exception {
         this.asyncHttpClient.close();
-        this.topic.set(0);
+        this.topic.set(1);
     }
 
     private static final ObjectMapper mapper =
