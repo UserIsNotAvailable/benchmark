@@ -55,11 +55,12 @@ class KafkaTopicCreator {
         this(admin, topicConfigs, replicationFactor, MAX_BATCH_SIZE);
     }
 
-    CompletableFuture<Void> create(List<TopicInfo> topicInfos) {
-        return CompletableFuture.runAsync(
+    CompletableFuture<List<String>> create(List<TopicInfo> topicInfos) {
+        return CompletableFuture.supplyAsync(
                 () -> {
                     createBlocking(topicInfos);
                     waitUntilAllTopicsCreated(topicInfos);
+                    return topicInfos.stream().map(TopicInfo::getTopic).toList();
                 });
     }
 

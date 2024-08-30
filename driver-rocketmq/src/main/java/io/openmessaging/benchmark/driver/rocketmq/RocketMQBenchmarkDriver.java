@@ -115,8 +115,8 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(final String topic, final int partitions) {
-        return CompletableFuture.runAsync(
+    public CompletableFuture<String> createTopic(final String topic, final int partitions) {
+        return CompletableFuture.supplyAsync(
                 () -> {
                     TopicConfig topicConfig = new TopicConfig();
                     topicConfig.setOrder(false);
@@ -147,6 +147,7 @@ public class RocketMQBenchmarkDriver implements BenchmarkDriver {
                                         topic, this.rmqClientConfig.clusterName),
                                 e);
                     }
+                    return topic;
                 });
     }
 

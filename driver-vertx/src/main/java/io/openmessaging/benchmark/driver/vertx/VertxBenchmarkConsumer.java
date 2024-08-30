@@ -13,176 +13,198 @@
  */
 package io.openmessaging.benchmark.driver.vertx;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http.websocketx.*;
 import io.netty.handler.codec.http.websocketx.extensions.compression.WebSocketClientCompressionHandler;
 import io.openmessaging.benchmark.driver.BenchmarkConsumer;
 import io.openmessaging.benchmark.driver.ConsumerCallback;
-import io.openmessaging.benchmark.driver.vertx.client.VertxClientConfig;
 import java.net.URI;
 import java.util.Base64;
 import java.util.Map;
-import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class VertxBenchmarkConsumer implements BenchmarkConsumer {
 
-    private Channel ch;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private final String topic;
-    private final ConsumerCallback callback;
-    private final URI uri;
     private final EventLoopGroup group;
-    private WebSocketClientHandler handler;
+    private final String topic;
+    private final URI uri;
+    private final ConsumerCallback callback;
 
-    public VertxBenchmarkConsumer(
+    private Channel ch;
+    private WebSocketClientHandler handler;
+    private volatile boolean reconnect = false;
+
+    public static CompletableFuture<VertxBenchmarkConsumer> create(
             final EventLoopGroup group,
             final URI uri,
-            String topic,
-            ConsumerCallback consumerCallback,
-            final String sendType) {
+            final String topic,
+            final ConsumerCallback consumerCallback) {
+        final VertxBenchmarkConsumer consumer =
+                new VertxBenchmarkConsumer(group, uri, topic, consumerCallback);
+        return consumer.open().thenApply(unused -> consumer);
+    }
 
-        if (sendType.equals(VertxClientConfig.TYPE_PUBLISH)) {
-            topic = UUID.randomUUID().toString();
-        }
+    private VertxBenchmarkConsumer(
+            final EventLoopGroup group,
+            final URI uri,
+            final String topic,
+            final ConsumerCallback consumerCallback) {
         this.group = group;
         this.topic = topic;
         this.uri = uri;
         this.callback = consumerCallback;
-        connect();
     }
 
-    private void connect() {
+    private CompletableFuture<Void> open() {
         this.handler =
                 new WebSocketClientHandler(
                         this,
                         WebSocketClientHandshakerFactory.newHandshaker(
-                                uri, WebSocketVersion.V13, "push," + topic, true, new DefaultHttpHeaders()),
-                        callback);
+                                this.uri,
+                                WebSocketVersion.V13,
+                                "push," + this.topic,
+                                true,
+                                new DefaultHttpHeaders()));
 
-        Bootstrap bootstrap = new Bootstrap();
+        final Bootstrap bootstrap = new Bootstrap();
         bootstrap
-                .group(group)
+                .group(this.group)
                 .channel(NioSocketChannel.class)
                 .handler(
-                        new ChannelInitializer() {
+                        new ChannelInitializer<SocketChannel>() {
                             @Override
-                            protected void initChannel(Channel ch) {
-                                ChannelPipeline p = ch.pipeline();
-                                p.addLast(
-                                        new HttpClientCodec(),
-                                        new HttpObjectAggregator(8192),
-                                        WebSocketClientCompressionHandler.INSTANCE,
-                                        handler);
+                            protected void initChannel(final SocketChannel ch) {
+                                ch.pipeline()
+                                        .addLast(
+                                                new HttpClientCodec(),
+                                                new HttpObjectAggregator(8192),
+                                                WebSocketClientCompressionHandler.INSTANCE,
+                                                VertxBenchmarkConsumer.this.handler);
                             }
                         });
-        try {
-            this.ch = bootstrap.connect(uri.getHost(), uri.getPort()).sync().channel();
-        } catch (Exception e) {
-            log.error("hander exception:{}", e.toString());
-        }
-    }
 
-    private static HttpHeaders createCustomHeaders(String topic) {
-        HttpHeaders headers = new DefaultHttpHeaders();
-        headers.add(HttpHeaderNames.SEC_WEBSOCKET_PROTOCOL, "push," + topic);
-        // headers.add(HttpHeaderNames.AUTHORIZATION, topic);
-        return headers;
+        final CompletableFuture<Void> ret = new CompletableFuture<>();
+        try {
+            this.ch = bootstrap.connect(this.uri.getHost(), this.uri.getPort()).sync().channel();
+            this.handler
+                    .handshakeFuture()
+                    .addListener(
+                            result -> {
+                                if (result.isSuccess()) {
+                                    ret.complete(null);
+                                } else {
+                                    ret.completeExceptionally(result.cause());
+                                }
+                            });
+        } catch (final Exception e) {
+            log.error(e.getMessage(), e);
+            ret.completeExceptionally(e);
+        }
+        return ret;
     }
 
     @Override
     public void close() throws Exception {
-        handler.isConnect = false;
-        ch.close();
+        this.reconnect = false;
+        if (null != this.ch) {
+            this.ch.writeAndFlush(new CloseWebSocketFrame()).await();
+            this.ch.closeFuture().await();
+            this.ch = null;
+        }
+        if (null != this.handler) {
+            this.handler = null;
+        }
     }
 
-    private static final Logger log = LoggerFactory.getLogger(VertxBenchmarkDriver.class);
+    private void consume(final String text) throws JsonProcessingException {
+        final Map<String, Object> decodedMap = this.objectMapper.readValue(text, Map.class);
+        final byte[] payload = Base64.getDecoder().decode((String) decodedMap.get("payload"));
+        final long timestamp = (long) decodedMap.get("ts");
+        this.callback.messageReceived(payload, timestamp);
+    }
 
-    private static class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> {
+    private void channelActive() {
+        this.reconnect = true;
+    }
 
-        private final WebSocketClientHandshaker handshaker;
-
-        private ChannelPromise handshakeFuture;
-
-        private final ConsumerCallback consumerCallback;
-
-        private final ObjectMapper objectMapper = new ObjectMapper();
-
-        private final VertxBenchmarkConsumer consumer;
-
-        private boolean isConnect = false;
-
-        public WebSocketClientHandler(
-                VertxBenchmarkConsumer consumer,
-                WebSocketClientHandshaker handshaker,
-                ConsumerCallback consumerCallback) {
-            this.consumer = consumer;
-            this.handshaker = handshaker;
-            this.consumerCallback = consumerCallback;
-        }
-
-        @Override
-        public void handlerAdded(ChannelHandlerContext ctx) {
-            handshakeFuture = ctx.newPromise();
-        }
-
-        @Override
-        public void channelActive(ChannelHandlerContext ctx) {
-            handshaker.handshake(ctx.channel());
-            isConnect = true;
-            // ctx.writeAndFlush(
-            //        new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/push/server"));
-        }
-
-        @Override
-        public void channelInactive(ChannelHandlerContext ctx) {
-            log.debug("WebSocket Client disconnected!");
-            if (isConnect) {
-                consumer.connect();
+    private void channelInactive() {
+        log.debug("WebSocket Client dreconnected!");
+        if (this.reconnect) {
+            try {
+                this.close();
+                this.open().get();
                 log.debug("WebSocket Client reconnect!");
+            } catch (final Exception e) {
+                log.error("WebSocket Client reconnect failed", e);
             }
         }
+    }
+
+    private static class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> {
+        private final WebSocketClientHandshaker handshaker;
+        private ChannelPromise handshakeFuture;
+        private final VertxBenchmarkConsumer consumer;
+
+        public WebSocketClientHandler(
+                final VertxBenchmarkConsumer consumer, final WebSocketClientHandshaker handshaker) {
+            this.consumer = consumer;
+            this.handshaker = handshaker;
+        }
 
         @Override
-        protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
-            Channel ch = ctx.channel();
-            if (!handshaker.isHandshakeComplete()) {
+        public void handlerAdded(final ChannelHandlerContext ctx) {
+            this.handshakeFuture = ctx.newPromise();
+        }
+
+        @Override
+        public void channelActive(final ChannelHandlerContext ctx) {
+            this.handshaker.handshake(ctx.channel());
+            this.consumer.channelActive();
+        }
+
+        @Override
+        public void channelInactive(final ChannelHandlerContext ctx) {
+            this.consumer.channelInactive();
+        }
+
+        @Override
+        protected void channelRead0(final ChannelHandlerContext ctx, final Object msg) {
+            final Channel ch = ctx.channel();
+            if (!this.handshaker.isHandshakeComplete()) {
                 try {
-                    handshaker.finishHandshake(ch, (FullHttpResponse) msg);
+                    this.handshaker.finishHandshake(ch, (FullHttpResponse) msg);
                     log.debug("WebSocket Client connected!");
-                    handshakeFuture.setSuccess();
-                } catch (WebSocketHandshakeException e) {
-                    log.error("WebSocket Client failed to connect");
-                    log.error(e.toString());
-                    handshakeFuture.setFailure(e);
+                    this.handshakeFuture.setSuccess();
+                } catch (final WebSocketHandshakeException e) {
+                    log.error("WebSocket Client failed to connect", e);
+                    this.handshakeFuture.setFailure(e);
                 }
                 return;
             }
 
-            if (msg instanceof FullHttpResponse) {
-                FullHttpResponse response = (FullHttpResponse) msg;
+            if (msg instanceof final FullHttpResponse response) {
                 throw new IllegalStateException(
                         "Unexpected FullHttpResponse (getStatus="
                                 + response.status()
                                 + ", content="
                                 + response.content().toString(io.netty.util.CharsetUtil.UTF_8)
                                 + ')');
-            } else if (msg instanceof WebSocketFrame) {
-                WebSocketFrame frame = (WebSocketFrame) msg;
-                if (frame instanceof TextWebSocketFrame) {
-                    TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
+            } else if (msg instanceof final WebSocketFrame frame) {
+                if (frame instanceof final TextWebSocketFrame textFrame) {
                     try {
-                        Map<String, Object> decodedMap = objectMapper.readValue(textFrame.text(), Map.class);
-                        byte[] payload = Base64.getDecoder().decode((String) decodedMap.get("payload"));
-                        long timestamp = (long) decodedMap.get("ts");
-                        consumerCallback.messageReceived(payload, timestamp);
-                    } catch (Exception e) {
-                        log.error(e.toString());
+                        this.consumer.consume(textFrame.text());
+                    } catch (final Exception e) {
+                        log.error(e.getMessage(), e);
                     }
                 } else if (frame instanceof PongWebSocketFrame) {
                     log.debug("WebSocket Client received pong");
@@ -194,16 +216,18 @@ public class VertxBenchmarkConsumer implements BenchmarkConsumer {
         }
 
         @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            cause.printStackTrace();
-            if (!handshakeFuture.isDone()) {
-                handshakeFuture.setFailure(cause);
+        public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) {
+            if (!this.handshakeFuture.isDone()) {
+                this.handshakeFuture.setFailure(cause);
             }
             ctx.close();
+            log.error(cause.getMessage(), cause);
         }
 
         public ChannelFuture handshakeFuture() {
-            return handshakeFuture;
+            return this.handshakeFuture;
         }
     }
+
+    private static final Logger log = LoggerFactory.getLogger(VertxBenchmarkConsumer.class);
 }

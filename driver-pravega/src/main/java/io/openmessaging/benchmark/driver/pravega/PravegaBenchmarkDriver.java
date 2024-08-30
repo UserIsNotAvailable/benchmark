@@ -89,7 +89,7 @@ public class PravegaBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(String topic, int partitions) {
+    public CompletableFuture<String> createTopic(String topic, int partitions) {
         topic = cleanName(topic);
         log.info("createTopic: topic={}, partitions={}", topic, partitions);
         synchronized (createdTopics) {

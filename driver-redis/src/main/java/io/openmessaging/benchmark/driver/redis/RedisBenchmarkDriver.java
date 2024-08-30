@@ -67,8 +67,8 @@ public class RedisBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(final String topic, final int partitions) {
-        return CompletableFuture.runAsync(() -> {});
+    public CompletableFuture<String> createTopic(final String topic, final int partitions) {
+        return CompletableFuture.supplyAsync(() -> topic);
     }
 
     @Override

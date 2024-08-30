@@ -70,8 +70,8 @@ public class ArtemisBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(String topic, int partitions) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
+    public CompletableFuture<String> createTopic(String topic, int partitions) {
+        CompletableFuture<String> future = new CompletableFuture<>();
         if (partitions != 1) {
             future.completeExceptionally(
                     new IllegalArgumentException("Partitions are not supported in Artemis"));

@@ -90,12 +90,13 @@ public class KafkaBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(String topic, int partitions) {
-        return createTopics(Collections.singletonList(new TopicInfo(topic, partitions)));
+    public CompletableFuture<String> createTopic(String topic, int partitions) {
+        return createTopics(Collections.singletonList(new TopicInfo(topic, partitions)))
+                .thenApply(unused -> topic);
     }
 
     @Override
-    public CompletableFuture<Void> createTopics(List<TopicInfo> topicInfos) {
+    public CompletableFuture<List<String>> createTopics(List<TopicInfo> topicInfos) {
         @SuppressWarnings({"unchecked", "rawtypes"})
         Map<String, String> topicConfigs = new HashMap<>((Map) topicProperties);
         KafkaTopicCreator topicCreator =

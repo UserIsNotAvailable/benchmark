@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import lombok.Value;
 import org.apache.bookkeeper.stats.StatsLogger;
 
@@ -51,7 +52,7 @@ public interface BenchmarkDriver extends AutoCloseable {
      * @param partitions
      * @return a future the completes when the topic is created
      */
-    CompletableFuture<Void> createTopic(String topic, int partitions);
+    CompletableFuture<String> createTopic(String topic, int partitions);
 
     /**
      * Create a list of new topics with the given number of partitions.
@@ -59,13 +60,13 @@ public interface BenchmarkDriver extends AutoCloseable {
      * @param topicInfos
      * @return a future the completes when the topics are created
      */
-    default CompletableFuture<Void> createTopics(List<TopicInfo> topicInfos) {
-        @SuppressWarnings("unchecked")
-        CompletableFuture<Void>[] futures =
+    default CompletableFuture<List<String>> createTopics(List<TopicInfo> topicInfos) {
+        final List<CompletableFuture<String>> futures =
                 topicInfos.stream()
                         .map(topicInfo -> createTopic(topicInfo.getTopic(), topicInfo.getPartitions()))
-                        .toArray(CompletableFuture[]::new);
-        return CompletableFuture.allOf(futures);
+                        .toList();
+        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
+                .thenApply(v -> futures.stream().map(CompletableFuture::join).collect(Collectors.toList()));
     }
 
     /**

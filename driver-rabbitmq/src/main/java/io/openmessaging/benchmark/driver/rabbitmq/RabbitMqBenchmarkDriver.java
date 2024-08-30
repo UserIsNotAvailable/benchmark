@@ -92,12 +92,12 @@ public class RabbitMqBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(String topic, int partitions) {
+    public CompletableFuture<String> createTopic(String topic, int partitions) {
         if (partitions != 1) {
             throw new IllegalArgumentException("Cannot create topic with partitions in RabbitMQ");
         }
 
-        CompletableFuture<Void> future = new CompletableFuture<>();
+        CompletableFuture<String> future = new CompletableFuture<>();
         future.complete(null);
 
         return future;

@@ -84,7 +84,7 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(String topic, int partitions) {
+    public CompletableFuture<String> createTopic(String topic, int partitions) {
         try {
             JetStreamManagement jsm = connection.jetStreamManagement();
             StreamInfo streamInfo =
@@ -99,7 +99,7 @@ public class NatsBenchmarkDriver implements BenchmarkDriver {
             log.info("Created stream {} -- {}", topic, JsonUtils.getFormatted(streamInfo));
             return CompletableFuture.completedFuture(null);
         } catch (Exception e) {
-            CompletableFuture<Void> f = new CompletableFuture<>();
+            CompletableFuture<String> f = new CompletableFuture<>();
             f.completeExceptionally(e);
             return f;
         }

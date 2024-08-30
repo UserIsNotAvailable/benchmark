@@ -13,6 +13,7 @@
  */
 package io.openmessaging.benchmark.driver.vertx;
 
+import static io.openmessaging.benchmark.driver.vertx.client.VertxClientConfig.TYPE_SEND;
 import static org.asynchttpclient.Dsl.asyncHttpClient;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -29,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.bookkeeper.stats.StatsLogger;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Dsl;
@@ -37,40 +39,35 @@ import org.slf4j.LoggerFactory;
 
 public class VertxBenchmarkDriver implements BenchmarkDriver {
     private VertxClientConfig clientConfig;
-    private final ObjectMapper m = new ObjectMapper();
-
-    private EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
-
+    private EventLoopGroup eventLoopGroup;
     private AsyncHttpClient asyncHttpClient;
-
     private URI webSocketUri;
+
+    private final AtomicLong topic = new AtomicLong(1000000);
 
     @Override
     public void initialize(final File configurationFile, final StatsLogger statsLogger)
             throws IOException {
         this.clientConfig = readConfig(configurationFile);
-
-        eventLoopGroup = new NioEventLoopGroup();
-
-        asyncHttpClient =
+        this.eventLoopGroup = new NioEventLoopGroup();
+        this.asyncHttpClient =
                 asyncHttpClient(Dsl.config().setReadTimeout(1_800_000).setRequestTimeout(1_800_000));
-
-        webSocketUri = null;
+        this.webSocketUri = null;
         try {
-            webSocketUri = new URI(this.clientConfig.webSocketUrl);
-        } catch (Exception e) {
-            log.error("format exception:{}({})", e.toString(), this.clientConfig.webSocketUrl);
+            this.webSocketUri = new URI(this.clientConfig.webSocketUrl);
+        } catch (final Exception e) {
+            log.error("format exception:{}({})", e, this.clientConfig.webSocketUrl);
         }
     }
 
     @Override
     public String getTopicNamePrefix() {
-        return "vertx-x";
+        return "vert-x";
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(final String topic, final int partitions) {
-        return CompletableFuture.runAsync(() -> {});
+    public CompletableFuture<String> createTopic(final String topic, final int partitions) {
+        return CompletableFuture.supplyAsync(() -> String.valueOf(this.topic.incrementAndGet()));
     }
 
     @Override
@@ -83,23 +80,27 @@ public class VertxBenchmarkDriver implements BenchmarkDriver {
     @Override
     public CompletableFuture<BenchmarkConsumer> createConsumer(
             final String topic, final String subscriptionName, final ConsumerCallback consumerCallback) {
-        return CompletableFuture.completedFuture(
-                new VertxBenchmarkConsumer(
-                        eventLoopGroup, webSocketUri, topic, consumerCallback, clientConfig.sendType));
+        return VertxBenchmarkConsumer.create(
+                        this.eventLoopGroup,
+                        this.webSocketUri,
+                        TYPE_SEND.equals(this.clientConfig.sendType)
+                                ? topic
+                                : subscriptionName.substring(4, 14),
+                        consumerCallback)
+                .thenApply(vertxBenchmarkConsumer -> vertxBenchmarkConsumer);
     }
-
-    private void setupLettuceConn() {}
 
     @Override
     public void close() throws Exception {
-        asyncHttpClient.close();
+        this.asyncHttpClient.close();
+        this.topic.set(0);
     }
 
     private static final ObjectMapper mapper =
             new ObjectMapper(new YAMLFactory())
                     .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    private static VertxClientConfig readConfig(File configurationFile) throws IOException {
+    private static VertxClientConfig readConfig(final File configurationFile) throws IOException {
         return mapper.readValue(configurationFile, VertxClientConfig.class);
     }
 

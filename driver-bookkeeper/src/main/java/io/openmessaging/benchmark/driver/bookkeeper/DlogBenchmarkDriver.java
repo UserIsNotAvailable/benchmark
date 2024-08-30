@@ -82,8 +82,8 @@ public class DlogBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(String topic, int partitions) {
-        return CompletableFuture.runAsync(
+    public CompletableFuture<String> createTopic(String topic, int partitions) {
+        return CompletableFuture.supplyAsync(
                 () -> {
                     try {
                         namespace.createLog(topic);
@@ -97,6 +97,7 @@ public class DlogBenchmarkDriver implements BenchmarkDriver {
                         log.error("Failed to create topic {} with {} partitions", topic, partitions, ioe);
                         throw new RuntimeException(ioe);
                     }
+                    return topic;
                 });
     }
 

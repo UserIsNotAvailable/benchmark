@@ -127,17 +127,17 @@ public class KopBenchmarkDriver implements BenchmarkDriver {
     }
 
     @Override
-    public CompletableFuture<Void> createTopic(String topic, int partitions) {
+    public CompletableFuture<String> createTopic(String topic, int partitions) {
         // replicationFactor is meaningless in KoP
         final NewTopic newTopic = new NewTopic(topic, partitions, (short) 1L);
-        final CompletableFuture<Void> future = new CompletableFuture<>();
+        final CompletableFuture<String> future = new CompletableFuture<>();
         admin
                 .createTopics(Collections.singletonList(newTopic))
                 .all()
                 .whenComplete(
                         (result, throwable) -> {
                             if (throwable == null) {
-                                future.complete(result);
+                                future.complete(topic);
                             } else {
                                 future.completeExceptionally(throwable);
                             }

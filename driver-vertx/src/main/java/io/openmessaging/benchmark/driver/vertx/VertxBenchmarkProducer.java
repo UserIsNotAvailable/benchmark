@@ -49,35 +49,39 @@ public class VertxBenchmarkProducer implements BenchmarkProducer {
     @Override
     public CompletableFuture<Void> sendAsync(final Optional<String> key, final byte[] payload) {
 
-        Map<String, Object> data = new HashMap<>();
+        final Map<String, Object> data = new HashMap<>();
         data.put("payload", Base64.getEncoder().encodeToString(payload));
         data.put("ts", System.currentTimeMillis());
         String body = "";
         try {
-            body = objectMapper.writeValueAsString(data);
-        } catch (Exception e) {
+            body = this.objectMapper.writeValueAsString(data);
+        } catch (final Exception e) {
             log.error(e.toString());
         }
 
-        CompletableFuture<Void> future = new CompletableFuture<>();
+        final CompletableFuture<Void> future = new CompletableFuture<>();
 
-        httpClient
+        this.httpClient
                 .preparePost(this.path)
                 .setHeader("spcls", this.sendType)
-                .setHeader("uc", topic)
+                .setHeader("ucs", "[" + this.topic + "]")
                 .setBody(body)
                 .execute()
                 .toCompletableFuture()
-                .thenApply(
+                .thenAccept(
                         response -> {
                             if (response.getStatusCode() == HTTP_OK) {
-                                future.complete(null);
+                                final String responseBody = response.getResponseBody();
+                                if (!"Send succeed.".equals(responseBody)
+                                        && !"Publish succeed.".equals(responseBody)) {
+                                    future.completeExceptionally(new RuntimeException(responseBody));
+                                } else {
+                                    future.complete(null);
+                                }
                             } else {
-                                future.completeExceptionally(new Exception());
+                                future.completeExceptionally(new RuntimeException(response.getStatusText()));
                             }
-                            return (Void) null;
-                        })
-                .join();
+                        });
 
         return future;
     }
@@ -87,5 +91,5 @@ public class VertxBenchmarkProducer implements BenchmarkProducer {
         // Close in Driver
     }
 
-    private static final Logger log = LoggerFactory.getLogger(VertxBenchmarkDriver.class);
+    private static final Logger log = LoggerFactory.getLogger(VertxBenchmarkProducer.class);
 }
