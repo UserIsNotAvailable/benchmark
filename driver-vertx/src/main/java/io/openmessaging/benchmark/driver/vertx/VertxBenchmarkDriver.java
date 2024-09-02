@@ -71,12 +71,13 @@ public class VertxBenchmarkDriver implements BenchmarkDriver {
 
     @Override
     public CompletableFuture<BenchmarkProducer> createProducer(final String topic) {
-        return CompletableFuture.completedFuture(
-                new VertxBenchmarkProducer(
-                        topic + "0000000",
-                        this.clientConfig.pushPath,
-                        this.asyncHttpClient,
-                        this.clientConfig.sendType));
+        return CompletableFuture.supplyAsync(
+                () ->
+                        new VertxBenchmarkProducer(
+                                topic + "0000000",
+                                this.clientConfig.pushPath,
+                                this.asyncHttpClient,
+                                this.clientConfig.sendType));
     }
 
     @Override

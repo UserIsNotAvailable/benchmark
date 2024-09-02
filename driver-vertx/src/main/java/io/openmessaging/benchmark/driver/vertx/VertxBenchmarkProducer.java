@@ -81,7 +81,8 @@ public class VertxBenchmarkProducer implements BenchmarkProducer {
                             } else {
                                 future.completeExceptionally(new RuntimeException(response.getStatusText()));
                             }
-                        });
+                        })
+                .join();
 
         return future;
     }
